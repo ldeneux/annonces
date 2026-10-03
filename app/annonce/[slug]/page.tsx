@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import { notFound } from 'next/navigation'
-import { db } from '@/lib/supabase'
+import { db, isAdmin } from '@/lib/supabase'
 export const dynamic = 'force-dynamic'
 const E = (n: any) => Number(n).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
 export default async function Annonce({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
@@ -8,7 +8,7 @@ export default async function Annonce({ params, searchParams }: { params: Promis
   const { data: b } = await d.from('annonces_biens').select('*').eq('slug', slug).eq('statut', 'publie').maybeSingle()
   if (!b) notFound()
   const ip = ((await headers()).get('x-forwarded-for') ?? '').split(',')[0].trim() || 'inconnue'
-  await d.rpc('annonces_log_visite', { p_bien: b.id, p_ip: ip })
+  if (!(await isAdmin())) await d.rpc('annonces_log_visite', { p_bien: b.id, p_ip: ip })
   const [{ data: ph }, { data: ed }] = await Promise.all([d.from('annonces_photos').select('storage_path').eq('bien_id', b.id).order('position'), d.from('annonces_editeur').select('*').maybeSingle()])
   const vente = b.transaction === 'vente', cc = Number(b.loyer_hc || 0) + Number(b.charges_recuperables || 0)
   const car = Object.entries(b.caracteristiques || {})

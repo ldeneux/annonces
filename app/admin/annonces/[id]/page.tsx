@@ -74,10 +74,10 @@ export default async function Edit({ params, searchParams }: { params: Promise<{
     await s.from('annonces_photos').delete().eq('id', String(f.get('pid')))
     redirect(`/admin/annonces/${id}`)
   }
-  async function del() { 'use server'; const s = await requireAdmin(); await s.from('annonces_biens').delete().eq('id', id); redirect('/admin') }
+  async function del() { 'use server'; const s = await requireAdmin(); await s.from('annonces_biens').delete().eq('id', id); redirect('/') }
 
   return <>
-    <a href="/admin">← Retour</a><h1>{b.titre}</h1>
+    <a href="/">← Retour</a><h1>{b.titre}</h1>
     <p>{b.type_bien} · {b.transaction} — <a href={link} target="_blank">{link}</a></p>
     {q.err && <p className="err">⚠ {q.err}<br /><small>(une mention légale obligatoire est probablement manquante : l'annonce n'est pas publiée)</small></p>}{q.ok && <p className="ok">Enregistré</p>}
     <form action={save}>

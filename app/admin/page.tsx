@@ -11,10 +11,10 @@ export default async function Admin({ searchParams }: { searchParams: Promise<{ 
     'use server'
     const s = await requireAdmin(), tr = String(f.get('transaction')), tb = String(f.get('type_bien'))
     const { data, error } = await s.from('annonces_biens').insert({ slug: Math.random().toString(36).slice(2, 8), titre: String(f.get('titre')), type_bien: tb, transaction: tr, ville: String(f.get('ville')), code_postal: String(f.get('code_postal')), ...(tr === 'vente' ? { prix: 1 } : { loyer_hc: 1 }), dpe_non_soumis: tb === 'garage' }).select('id').single()
-    if (error) redirect('/admin?err=' + encodeURIComponent(error.message))
+    if (error) redirect('/?err=' + encodeURIComponent(error.message))
     redirect('/admin/annonces/' + data.id)
   }
-  async function logout() { 'use server'; const s = await requireAdmin(); await s.auth.signOut(); redirect('/admin/login') }
+  async function logout() { 'use server'; const s = await requireAdmin(); await s.auth.signOut(); redirect('/') }
   return <>
     <h1>Mes annonces</h1><form action={logout}><button>Déconnexion</button></form>
     {q.err && <p className="err">{q.err}</p>}
