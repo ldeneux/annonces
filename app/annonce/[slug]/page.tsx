@@ -1,7 +1,7 @@
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { db, isAdmin } from '@/lib/supabase'
-import { E, prix, photoUrl } from '@/lib/fmt'
+import { E, prix, photoUrl, carac } from '@/lib/fmt'
 import Shell from '../../Shell'
 import Gallery from '../../Gallery'
 import { AdminMenu, Dpe } from '../../parts'
@@ -22,7 +22,7 @@ export default async function Annonce({ params }: { params: Promise<{ slug: stri
   const ligne = [b.nb_pieces ? `${b.nb_pieces} pièces` : null, b.surface_m2 ? `${String(b.surface_m2).replace('.', ',')} m²` : null, etage].filter(Boolean)
   const facts: [string, string][] = [
     ...(b.surface_carrez_m2 ? [['Surface loi Carrez', `${String(b.surface_carrez_m2).replace('.', ',')} m²`] as [string, string]] : []),
-    ...Object.entries(b.caracteristiques || {}).map(([k, v]) => [k, String(v)] as [string, string])]
+    ...carac(b.caracteristiques)]
   const loc: [string, any][] = vente ? [] : ([
     ['Loyer hors charges', b.loyer_hc != null && `${E(b.loyer_hc)} / mois`], ['Charges', b.charges_recuperables != null && `${E(b.charges_recuperables)} / mois (${b.modalites_charges === 'forfait' ? 'forfait' : 'provision'})`],
     ['Dépôt de garantie', b.depot_garantie != null && E(b.depot_garantie)], ['Honoraires locataire', b.honoraires_locataire != null && E(b.honoraires_locataire)],

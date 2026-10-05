@@ -3,3 +3,5 @@ export const E = (n: any) => Number(n).toLocaleString('fr-FR', { style: 'currenc
 export const prix = (b: any) => b.transaction === 'vente' ? E(b.prix) : `${E(Number(b.loyer_hc) + Number(b.charges_recuperables || 0))} / mois CC`
 export const info = (b: any) => [b.type_bien === 'garage' ? 'Garage' : 'Appartement', b.ville, b.nb_pieces ? `${b.nb_pieces} pièces` : null, b.surface_m2 ? `${String(b.surface_m2).replace('.', ',')} m²` : null].filter(Boolean).join(' · ')
 export const photoUrl = (p: string) => `${process.env.NEXT_PUBLIC_SUPABASE_URL}/storage/v1/object/public/annonces/${p}`
+// Caractéristiques : liste ordonnée [libellé, valeur] (l'ancien format « objet » reste lisible)
+export const carac = (c: any): [string, string][] => Array.isArray(c) ? c.map((x: any) => [String(x[0]), String(x[1] ?? '')]) : Object.entries(c || {}).map(([k, v]) => [k, String(v)])

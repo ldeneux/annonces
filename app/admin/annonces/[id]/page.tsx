@@ -1,7 +1,7 @@
 import { redirect, notFound } from 'next/navigation'
 import Link from 'next/link'
 import { requireAdmin } from '@/lib/supabase'
-import { photoUrl } from '@/lib/fmt'
+import { photoUrl, carac } from '@/lib/fmt'
 import Shell from '../../../Shell'
 import { AdminMenu } from '../../../parts'
 import Up from './Up'
@@ -61,7 +61,7 @@ export default async function Edit({ params, searchParams }: { params: Promise<{
       u[n] = k === 'b' ? f.get(n) === 'on' : v === '' && !['titre', 'slug', 'ville', 'code_postal'].includes(n) ? null : k === 'n' ? Number(v) : v
     }
     u.description = String(f.get('description') || '') || null
-    u.caracteristiques = Object.fromEntries(String(f.get('carac') || '').split('\n').filter((l) => l.includes('=')).map((l) => [l.split('=')[0].trim(), l.split('=').slice(1).join('=').trim()]))
+    u.caracteristiques = String(f.get('carac') || '').split('\n').map((l) => l.trim()).filter(Boolean).map((l) => { const i = l.search(/[:=]/); return i < 0 ? [l, ''] : [l.slice(0, i).trim(), l.slice(i + 1).trim()] })
     const { error } = await s.from('annonces_biens').update(u).eq('id', id)
     redirect(`/admin/annonces/${id}?${error ? 'err=' + encodeURIComponent(error.message) : 'ok=1'}`)
   }
@@ -99,7 +99,7 @@ export default async function Edit({ params, searchParams }: { params: Promise<{
               : <input name={n} type={k === 'n' ? 'number' : k === 'd' ? 'date' : 'text'} step="any" defaultValue={b[n] ?? ''} />}</>}</label>)}</div></section> })}
       <section className="card"><h3 className="lbl">Descriptif & caractéristiques</h3>
         <label>Descriptif<textarea name="description" rows={8} defaultValue={b.description ?? ''} /></label>
-        <label>Caractéristiques (une par ligne : libellé=valeur)<textarea name="carac" rows={7} placeholder={'Ascenseur=Non\nParking=Oui\nCave=Oui\nTerrasse=Oui\nAnnée de construction=1960\nChauffage=Radiateur électrique'} defaultValue={Object.entries(b.caracteristiques || {}).map(([k, v]) => `${k}=${v}`).join('\n')} /></label></section>
+        <label>Caractéristiques (une par ligne : « libellé : valeur »)<textarea name="carac" rows={7} placeholder={'🏢 Ascenseur : Non\n🚗 Parking : Oui\n📦 Cave : Oui\n☀️ Terrasse : Oui'} defaultValue={carac(b.caracteristiques).map(([k, v]) => v ? `${k} : ${v}` : k).join('\n')} /></label></section>
       <button className="btn">Enregistrer</button></form>
     <section className="card" style={{ marginTop: 16 }}><h3 className="lbl">Photos (la première sert de couverture)</h3><Up id={id} save={addPhotos} />
       <div className="thumbs" style={{ marginTop: 12 }}>{(ph || []).map((p) => <form action={delPhoto} key={p.id}><img src={photoUrl(p.storage_path)} alt="" /><input type="hidden" name="pid" value={p.id} /><input type="hidden" name="path" value={p.storage_path} /><div className="row" style={{ marginTop: 6 }}><button formAction={setCover} className="btn ghost" style={{ padding: '4px 12px' }}>★ En premier</button><button className="btn ghost" style={{ padding: '4px 12px' }}>Supprimer</button></div></form>)}</div></section>
