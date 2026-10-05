@@ -1,44 +1,50 @@
-import { headers } from 'next/headers'
+import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import { db, isAdmin } from '@/lib/supabase'
+import { E, prix, photoUrl } from '@/lib/fmt'
+import Shell from '../../Shell'
+import Gallery from '../../Gallery'
+import { ContactCard, AdminMenu, Dpe } from '../../parts'
 export const dynamic = 'force-dynamic'
-const E = (n: any) => Number(n).toLocaleString('fr-FR', { style: 'currency', currency: 'EUR' })
-export default async function Annonce({ params, searchParams }: { params: Promise<{ slug: string }>; searchParams: Promise<{ ok?: string; err?: string }> }) {
-  const { slug } = await params, q = await searchParams, d = db()
-  const { data: b } = await d.from('annonces_biens').select('*').eq('slug', slug).eq('statut', 'publie').maybeSingle()
+export default async function Annonce({ params }: { params: Promise<{ slug: string }> }) {
+  const { slug } = await params, d = db(), adm = !!(await isAdmin())
+  // Le propriétaire peut prévisualiser ses brouillons ; le public ne voit que le publié
+  let q = d.from('annonces_biens').select('*').eq('slug', slug)
+  if (!adm) q = q.eq('statut', 'publie')
+  const { data: b } = await q.maybeSingle()
   if (!b) notFound()
-  const ip = ((await headers()).get('x-forwarded-for') ?? '').split(',')[0].trim() || 'inconnue'
-  if (!(await isAdmin())) await d.rpc('annonces_log_visite', { p_bien: b.id, p_ip: ip })
-  const [{ data: ph }, { data: ed }] = await Promise.all([d.from('annonces_photos').select('storage_path').eq('bien_id', b.id).order('position'), d.from('annonces_editeur').select('*').maybeSingle()])
-  const vente = b.transaction === 'vente', cc = Number(b.loyer_hc || 0) + Number(b.charges_recuperables || 0)
-  const car = Object.entries(b.caracteristiques || {})
-  return <main>
-    <h1>{b.titre}</h1>
-    <p><b style={{ fontSize: '1.6em' }}>{vente ? E(b.prix) : `${E(cc)} / mois CC`}</b>{vente && b.honoraires_a_charge === 'acquereur' && <><br />Honoraires à la charge de l'acquéreur : {E(b.honoraires_montant)} — prix hors honoraires : {E(b.prix_hors_honoraires)}</>}</p>
-    <p>{b.type_bien === 'garage' ? 'Garage' : 'Appartement'} à {b.ville} ({b.code_postal}){b.surface_m2 && ` · ${b.surface_m2} m²`}{b.nb_pieces && ` · ${b.nb_pieces} pièces`}{b.etage != null && ` · étage ${b.etage}`}</p>
-    <div className="g">{(ph || []).map((p) => <img key={p.storage_path} alt={b.titre} src={d.storage.from('annonces').getPublicUrl(p.storage_path).data.publicUrl} />)}</div>
-    {b.description && <p style={{ whiteSpace: 'pre-line' }}>{b.description}</p>}
-    {car.length > 0 && <ul>{car.map(([k, v]) => <li key={k}>{k} : {String(v)}</li>)}</ul>}
-    {vente ? <div className="box">{b.surface_carrez_m2 && <>Surface loi Carrez : {b.surface_carrez_m2} m²<br /></>}
-      {b.copropriete && <>Bien en copropriété · {b.copro_nb_lots} lots · charges annuelles moyennes : {E(b.copro_charges_annuelles)} · procédure en cours : {b.copro_procedure_en_cours ? 'oui' : 'non'}</>}</div>
-    : <div className="box">Loyer hors charges : {E(b.loyer_hc)} / mois<br />Charges récupérables : {E(b.charges_recuperables)} / mois ({b.modalites_charges === 'forfait' ? 'forfait' : 'provision sur charges'})
-      {b.depot_garantie != null && <><br />Dépôt de garantie : {E(b.depot_garantie)}</>}{b.honoraires_locataire != null && <><br />Honoraires à la charge du locataire : {E(b.honoraires_locataire)}</>}
-      {b.zone_encadrement_loyers && <><br />Zone d'encadrement des loyers — loyer de référence : {b.loyer_reference} €/m² · majoré : {b.loyer_reference_majore} €/m²{b.complement_loyer != null && ` · complément de loyer : ${E(b.complement_loyer)}`}</>}</div>}
-    <div className="box">{b.dpe_non_soumis ? 'Bien non soumis au diagnostic de performance énergétique.' : <>
-      <span className="dpe">CLASSE ÉNERGIE {b.dpe_classe_energie}</span> · <span className="dpe">CLASSE CLIMAT {b.dpe_classe_climat}</span><br />
-      {b.dpe_conso_kwh_m2_an != null && <>{b.dpe_conso_kwh_m2_an} kWh/m²/an · {b.dpe_emissions_ges_kg_m2_an} kg CO₂/m²/an<br /></>}
-      Dépenses annuelles d'énergie estimées entre {E(b.dpe_cout_min_an)} et {E(b.dpe_cout_max_an)} (prix de l'énergie : année {b.dpe_annee_reference_prix}).
-      {['F', 'G'].includes(b.dpe_classe_energie) && <><br /><b>Logement à consommation énergétique excessive</b></>}</>}</div>
-    <h2>Contact</h2>
-    {ed && <p>{ed.nom}{ed.telephone && <> · <a href={`tel:${ed.telephone}`}>{ed.telephone}</a></>} · <a href={`mailto:${ed.email}`}>{ed.email}</a></p>}
-    {q.ok && <p className="ok">Votre demande a bien été envoyée.</p>}{q.err && <p className="err">Erreur : merci de vérifier le formulaire.</p>}
-    <form method="POST" action="/api/contact" className="box">
-      <input type="hidden" name="bien_id" value={b.id} /><input type="hidden" name="back" value={`/annonce/${slug}`} />
-      <input name="website" style={{ display: 'none' }} tabIndex={-1} autoComplete="off" />
-      <label>Nom<br /><input name="nom" required /></label><label>Email<br /><input name="email" type="email" required /></label>
-      <label>Téléphone<br /><input name="telephone" /></label><label>Message<br /><textarea name="message" rows={4} cols={40} /></label>
-      <label><input type="checkbox" name="consentement" required /> J'accepte que mes données soient utilisées pour traiter ma demande (<a href="/legal/confidentialite">politique de confidentialité</a>).</label>
-      <button>Envoyer ma demande</button></form>
-    <footer><a href="/legal/mentions-legales">Mentions légales</a> · <a href="/legal/confidentialite">Confidentialité</a></footer>
-  </main>
+  const [{ data: ph }, { data: autres }] = await Promise.all([
+    d.from('annonces_photos').select('storage_path').eq('bien_id', b.id).order('position'),
+    d.from('annonces_biens').select('slug,titre').eq('statut', 'publie').neq('id', b.id).order('created_at', { ascending: false })])
+  const vente = b.transaction === 'vente'
+  const ppm = vente && b.prix && b.surface_m2 ? Math.round(b.prix / b.surface_m2) : null
+  const etage = b.etage == null ? null : b.etage === 0 ? 'RDC' : b.etage === 1 ? '1er étage' : `${b.etage}e étage`
+  const ligne = [b.nb_pieces ? `${b.nb_pieces} pièces` : null, b.surface_m2 ? `${String(b.surface_m2).replace('.', ',')} m²` : null, etage].filter(Boolean)
+  const facts: [string, string][] = [
+    ...(b.surface_carrez_m2 ? [['Surface loi Carrez', `${String(b.surface_carrez_m2).replace('.', ',')} m²`] as [string, string]] : []),
+    ...Object.entries(b.caracteristiques || {}).map(([k, v]) => [k, String(v)] as [string, string])]
+  const loc: [string, any][] = vente ? [] : ([
+    ['Loyer hors charges', b.loyer_hc != null && `${E(b.loyer_hc)} / mois`], ['Charges', b.charges_recuperables != null && `${E(b.charges_recuperables)} / mois (${b.modalites_charges === 'forfait' ? 'forfait' : 'provision'})`],
+    ['Dépôt de garantie', b.depot_garantie != null && E(b.depot_garantie)], ['Honoraires locataire', b.honoraires_locataire != null && E(b.honoraires_locataire)],
+    ['Loyer de référence', b.zone_encadrement_loyers && `${b.loyer_reference} €/m² (majoré ${b.loyer_reference_majore} €/m²)`], ['Complément de loyer', b.complement_loyer != null && E(b.complement_loyer)]] as [string, any][]).filter(([, v]) => v)
+  return <Shell side={<>{adm && <AdminMenu extra={<Link className="side-link" href={`/admin/annonces/${b.id}`}>Modifier cette annonce</Link>} />}<ContactCard />
+    {!!autres?.length && <section className="card"><h3 className="lbl">Autres annonces</h3>{autres.map((a) => <Link key={a.slug} className="side-link" href={`/annonce/${a.slug}`}>{a.titre}</Link>)}</section>}</>}>
+    <Link href="/" className="back">← Annonces</Link>
+    <h1 className="t" style={{ marginTop: 10 }}>{b.titre} {b.statut !== 'publie' && <span className="chip warn">{b.statut}</span>}</h1>
+    <Gallery photos={(ph || []).map((p) => photoUrl(p.storage_path))} alt={b.titre} />
+    <section className="card">
+      <div className="muted" style={{ fontWeight: 600 }}>{b.type_bien === 'garage' ? 'Garage' : 'Appartement'} {vente ? 'à vendre' : 'à louer'} · {b.ville} ({b.code_postal})</div>
+      <div className="row"><span className="price">{prix(b)}</span>{ppm && <span className="chip">{E(ppm)}/m²</span>}</div>
+      {vente && b.honoraires_a_charge === 'acquereur' && <div className="muted" style={{ fontSize: '.9rem' }}>Honoraires à la charge de l'acquéreur : {E(b.honoraires_montant)} — prix hors honoraires : {E(b.prix_hors_honoraires)}</div>}
+      {!!ligne.length && <p style={{ fontWeight: 600, marginBottom: 0 }}>{ligne.join(' · ')}</p>}
+    </section>
+    {b.description && <section className="card"><h2 className="t">Descriptif</h2><div style={{ whiteSpace: 'pre-line' }}>{b.description}</div></section>}
+    {(facts.length > 0 || loc.length > 0) && <section className="card"><h2 className="t">Caractéristiques</h2>
+      <div className="facts">{[...loc, ...facts].map(([k, v]) => <div key={k}><b>{k}</b>{String(v)}</div>)}</div></section>}
+    <Dpe b={b} />
+    {vente && b.copropriete && <section className="card"><h2 className="t">Informations sur la copropriété</h2><div className="facts">
+      {b.copro_nb_lots != null && <div><b>Nombre de lots</b>{b.copro_nb_lots}</div>}
+      {b.copro_charges_annuelles != null && <div><b>Charges de copropriété</b>{E(b.copro_charges_annuelles)}/an</div>}
+      {b.copro_procedure_en_cours != null && <div><b>Procédures syndicales</b>{b.copro_procedure_en_cours ? 'Procédure en cours' : 'Pas de procédure en cours'}</div>}</div></section>}
+  </Shell>
 }
