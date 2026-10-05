@@ -10,8 +10,10 @@ export default async function Affiche({ searchParams }: { searchParams: Promise<
   const sel: string[] = cfg?.bien_ids || []
   async function save(f: FormData) {
     'use server'
-    const s = await requireAdmin()
-    const { error } = await s.from('annonces_affiche').upsert({ id: 1, titre: String(f.get('titre') || ''), description: String(f.get('description') || ''), afficher_tel: f.get('afficher_tel') === 'on', bien_ids: f.getAll('ids').map(String), mentions: Object.fromEntries([...f.entries()].filter(([k, v]) => k.startsWith('mention_') && String(v).trim()).map(([k, v]) => [k.slice(8), String(v).trim()])) })
+    const s = await requireAdmin(), mentions: Record<string, string> = {}
+    // une mention par bien : champs « mention_<id> » (forEach : FormData.entries() n'est pas typé ici)
+    f.forEach((v, k) => { if (k.startsWith('mention_') && String(v).trim()) mentions[k.slice(8)] = String(v).trim() })
+    const { error } = await s.from('annonces_affiche').upsert({ id: 1, titre: String(f.get('titre') || ''), description: String(f.get('description') || ''), afficher_tel: f.get('afficher_tel') === 'on', bien_ids: f.getAll('ids').map(String), mentions })
     redirect('/admin/affiche?' + (error ? 'err=' + encodeURIComponent(error.message) : 'ok=1'))
   }
   return <Shell side={<AdminMenu />}>

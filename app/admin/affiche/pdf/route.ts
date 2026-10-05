@@ -68,5 +68,5 @@ export async function GET(req: Request) {
   ctr(url.replace(/^https?:\/\//, ''), 96, sans, 10, MUT)
   if (cfg?.afficher_tel && ct?.telephone) ctr(`${ct.nom ? ct.nom + ' - ' : ''}${ct.telephone}`, 56, bold, 16, ORG)
 
-  return new Response(new Uint8Array(await pdf.save()), { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="a-vendre.pdf"' } })
+  return new Response((await pdf.save()) as any, { headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': 'inline; filename="a-vendre.pdf"' } })
 }
