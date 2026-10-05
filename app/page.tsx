@@ -2,13 +2,13 @@ import Link from 'next/link'
 import { db, isAdmin } from '@/lib/supabase'
 import { prix, info, photoUrl } from '@/lib/fmt'
 import Shell from './Shell'
-import { ContactCard, AdminMenu, DPE_COL } from './parts'
+import { AdminMenu, DPE_COL } from './parts'
 export const dynamic = 'force-dynamic'
 export default async function Home() {
   const d = db(), adm = !!(await isAdmin())
   const { data: biens } = await d.from('annonces_biens').select('*').eq('statut', 'publie').order('created_at', { ascending: false })
   const { data: ph } = await d.from('annonces_photos').select('bien_id,storage_path').in('bien_id', (biens || []).map((b) => b.id)).order('position')
-  return <Shell side={<>{adm && <AdminMenu />}<ContactCard /></>}>
+  return <Shell side={adm && <AdminMenu />}>
     {!biens?.length && <div className="card muted">Aucune annonce pour le moment.</div>}
     <div className="ads">{(biens || []).map((b) => { const p = (ph || []).find((x) => x.bien_id === b.id), k = 'ABCDEFG'.indexOf(b.dpe_classe_energie || '')
       return <Link key={b.id} href={`/annonce/${b.slug}`} className="ad">

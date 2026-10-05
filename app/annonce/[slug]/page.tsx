@@ -4,7 +4,7 @@ import { db, isAdmin } from '@/lib/supabase'
 import { E, prix, photoUrl } from '@/lib/fmt'
 import Shell from '../../Shell'
 import Gallery from '../../Gallery'
-import { ContactCard, AdminMenu, Dpe } from '../../parts'
+import { AdminMenu, Dpe } from '../../parts'
 export const dynamic = 'force-dynamic'
 export default async function Annonce({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params, d = db(), adm = !!(await isAdmin())
@@ -27,7 +27,7 @@ export default async function Annonce({ params }: { params: Promise<{ slug: stri
     ['Loyer hors charges', b.loyer_hc != null && `${E(b.loyer_hc)} / mois`], ['Charges', b.charges_recuperables != null && `${E(b.charges_recuperables)} / mois (${b.modalites_charges === 'forfait' ? 'forfait' : 'provision'})`],
     ['Dépôt de garantie', b.depot_garantie != null && E(b.depot_garantie)], ['Honoraires locataire', b.honoraires_locataire != null && E(b.honoraires_locataire)],
     ['Loyer de référence', b.zone_encadrement_loyers && `${b.loyer_reference} €/m² (majoré ${b.loyer_reference_majore} €/m²)`], ['Complément de loyer', b.complement_loyer != null && E(b.complement_loyer)]] as [string, any][]).filter(([, v]) => v)
-  return <Shell side={<>{adm && <AdminMenu extra={<Link className="side-link" href={`/admin/annonces/${b.id}`}>Modifier cette annonce</Link>} />}<ContactCard />
+  return <Shell side={<>{adm && <AdminMenu extra={<Link className="side-link" href={`/admin/annonces/${b.id}`}>Modifier cette annonce</Link>} />}
     {!!autres?.length && <section className="card"><h3 className="lbl">Autres annonces</h3>{autres.map((a) => <Link key={a.slug} className="side-link" href={`/annonce/${a.slug}`}>{a.titre}</Link>)}</section>}</>}>
     <Link href="/" className="back">← Annonces</Link>
     <h1 className="t" style={{ marginTop: 10 }}>{b.titre} {b.statut !== 'publie' && <span className="chip warn">{b.statut}</span>}</h1>

@@ -77,6 +77,14 @@ export default async function Edit({ params, searchParams }: { params: Promise<{
     await s.from('annonces_photos').delete().eq('id', String(f.get('pid')))
     redirect(`/admin/annonces/${id}`)
   }
+  async function setCover(f: FormData) {
+    'use server'
+    // La photo passe devant toutes les autres (position plus petite que la plus petite existante)
+    const s = await requireAdmin()
+    const { data: first } = await s.from('annonces_photos').select('position').eq('bien_id', id).order('position').limit(1).maybeSingle()
+    await s.from('annonces_photos').update({ position: (first?.position ?? 0) - 1 }).eq('id', String(f.get('pid')))
+    redirect(`/admin/annonces/${id}`)
+  }
   async function del() { 'use server'; const s = await requireAdmin(); await s.from('annonces_biens').delete().eq('id', id); redirect('/admin') }
 
   return <Shell side={<AdminMenu extra={<Link className="side-link" href={`/annonce/${b.slug}`}>Voir l'annonce</Link>} />}>
@@ -94,7 +102,7 @@ export default async function Edit({ params, searchParams }: { params: Promise<{
         <label>Caractéristiques (une par ligne : libellé=valeur)<textarea name="carac" rows={7} placeholder={'Ascenseur=Non\nParking=Oui\nCave=Oui\nTerrasse=Oui\nAnnée de construction=1960\nChauffage=Radiateur électrique'} defaultValue={Object.entries(b.caracteristiques || {}).map(([k, v]) => `${k}=${v}`).join('\n')} /></label></section>
       <button className="btn">Enregistrer</button></form>
     <section className="card" style={{ marginTop: 16 }}><h3 className="lbl">Photos (la première sert de couverture)</h3><Up id={id} save={addPhotos} />
-      <div className="thumbs" style={{ marginTop: 12 }}>{(ph || []).map((p) => <form action={delPhoto} key={p.id}><img src={photoUrl(p.storage_path)} alt="" /><input type="hidden" name="pid" value={p.id} /><input type="hidden" name="path" value={p.storage_path} /><button className="btn ghost" style={{ marginTop: 6, padding: '4px 12px' }}>Supprimer</button></form>)}</div></section>
+      <div className="thumbs" style={{ marginTop: 12 }}>{(ph || []).map((p) => <form action={delPhoto} key={p.id}><img src={photoUrl(p.storage_path)} alt="" /><input type="hidden" name="pid" value={p.id} /><input type="hidden" name="path" value={p.storage_path} /><div className="row" style={{ marginTop: 6 }}><button formAction={setCover} className="btn ghost" style={{ padding: '4px 12px' }}>★ En premier</button><button className="btn ghost" style={{ padding: '4px 12px' }}>Supprimer</button></div></form>)}</div></section>
     <form action={del}><button className="btn red">Supprimer l'annonce</button></form>
   </Shell>
 }

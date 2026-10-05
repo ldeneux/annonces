@@ -1,12 +1,14 @@
 import { redirect } from 'next/navigation'
 import Link from 'next/link'
-import { requireAdmin } from '@/lib/supabase'
+import { requireAdmin, isAdmin } from '@/lib/supabase'
+import Login from '../Login'
 import { prix } from '@/lib/fmt'
 import Shell from '../Shell'
 import { AdminMenu } from '../parts'
 export const dynamic = 'force-dynamic'
 export default async function Admin({ searchParams }: { searchParams: Promise<{ err?: string; ok?: string }> }) {
-  const q = await searchParams, s = await requireAdmin()
+  const q = await searchParams, s = await isAdmin()
+  if (!s) return <Shell><Login /></Shell>
   const { data: biens } = await s.from('annonces_biens').select('*').order('created_at', { ascending: false })
   const { data: ct } = await s.from('annonces_contact').select('*').maybeSingle()
   async function create(f: FormData) {

@@ -7,9 +7,9 @@ export const DPE_COL = ['#008b52', '#4fae33', '#c8d400', '#fbe600', '#f6a800', '
 const GES_COL = ['#a6d8f5', '#7fb8e0', '#5b9bcf', '#4a6e9b', '#3d4f7e', '#2d2f63', '#1d1a47']
 
 // Petit bloc « Contacter le propriétaire » (téléphone + mail) — c'est l'acheteur qui appelle
-export async function ContactCard() {
+export async function ContactCard({ adm }: { adm?: boolean }) {
   const { data: c } = await db().from('annonces_contact').select('*').maybeSingle()
-  if (!c || (!c.telephone && !c.email)) return null
+  if (!c || (!c.telephone && !c.email)) return adm ? <section className="card"><h3 className="lbl">Contacter le propriétaire</h3><Link className="side-link" href="/admin">Renseigner mes coordonnées</Link></section> : null
   return <section className="card"><h3 className="lbl">Contacter le propriétaire</h3><div className="contact">
     {c.nom && <div>{c.nom}</div>}
     {c.telephone && <div>📞 <a href={`tel:${c.telephone}`}>{c.telephone}</a></div>}
